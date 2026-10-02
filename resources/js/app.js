@@ -124,6 +124,15 @@ if (mapElement) {
 
 	const fieldList = document.getElementById('field-list');
 	const buildingList = document.getElementById('building-list');
+	const fieldDetailsPanel = document.getElementById('field-details-panel');
+	const fieldDetailsName = document.getElementById('field-details-name');
+	const fieldDetailCrop = document.getElementById('field-detail-crop');
+	const fieldDetailIrrigation = document.getElementById('field-detail-irrigation');
+	const fieldDetailSoil = document.getElementById('field-detail-soil');
+	const fieldDetailActivity = document.getElementById('field-detail-activity');
+	const fieldDetailManager = document.getElementById('field-detail-manager');
+	const fieldDetailArea = document.getElementById('field-detail-area');
+	const fieldDetailFertility = document.getElementById('field-detail-fertility');
 	const fieldCount = document.getElementById('field-count');
 	const mobileFieldCount = document.getElementById('field-count-mobile');
 	const buildingCount = document.getElementById('building-count');
@@ -150,6 +159,40 @@ if (mapElement) {
 		workshop: 'Workshop',
 		other: 'Building',
 	};
+	const fieldStaticProfiles = [
+		{
+			crop: 'Winter wheat',
+			irrigation: 'Drip irrigation',
+			soilType: 'Loamy silt',
+			activity: 'Fertility check',
+			manager: 'North block team',
+			note: 'Strong moisture retention and steady yield projection.',
+		},
+		{
+			crop: 'Barley',
+			irrigation: 'Rain-fed',
+			soilType: 'Clay loam',
+			activity: 'Soil sampling',
+			manager: 'West field crew',
+			note: 'Stable structure with excellent nutrient retention.',
+		},
+		{
+			crop: 'Oilseed rape',
+			irrigation: 'Pivot irrigation',
+			soilType: 'Sandy loam',
+			activity: 'Crop scouting',
+			manager: 'South block crew',
+			note: 'Good drainage and fast warming for early emergence.',
+		},
+		{
+			crop: 'Grass ley',
+			irrigation: 'Sprinkler lines',
+			soilType: 'Peaty loam',
+			activity: 'Rotational grazing',
+			manager: 'River field crew',
+			note: 'High organic matter and resilient pasture cover.',
+		},
+	];
 	let workspace = loadWorkspace();
 	let activeFarmId = workspace.activeFarmId;
 	let selectedId = null;
@@ -263,11 +306,107 @@ if (mapElement) {
 		return getFeatures().filter((feature) => feature.properties.mode === 'building');
 	}
 
+	function hashString(value) {
+		return [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
+	}
+
+	function getFieldStaticProfile(fieldName) {
+		const fallback = fieldStaticProfiles[0];
+		const name = fieldName ?? 'Field';
+		const profile = fieldStaticProfiles[hashString(name) % fieldStaticProfiles.length] ?? fallback;
+
+		return {
+			crop: profile.crop,
+			irrigation: profile.irrigation,
+			soilType: profile.soilType,
+			activity: profile.activity,
+			manager: profile.manager,
+			note: profile.note,
+		};
+	}
+
+	function getPolygonAreaSquareMeters(feature) {
+		if (feature.geometry?.type !== 'Polygon') {
+			return 0;
+		}
+
+		const coordinates = feature.geometry.coordinates[0] ?? [];
+		if (coordinates.length < 3) {
+			return 0;
+		}
+
+		const polygon = L.polygon(coordinates.map(([lng, lat]) => [lat, lng]));
+		return polygon.getArea();
+	}
+
+	function getFieldAreaDescription(feature) {
+		const area = getPolygonAreaSquareMeters(feature);
+		if (!area) {
+			return '—';
+		}
+
+		const hectares = area / 10000;
+		if (hectares < 0.1) {
+			return `${Math.round(area)} m²`;
+		}
+
+		return `${hectares.toFixed(2)} ha`;
+	}
+
+	function getFieldFertilityScore(feature) {
+		const area = getPolygonAreaSquareMeters(feature);
+		if (!area) {
+			return '—';
+		}
+
+		const coordinates = feature.geometry.coordinates[0] ?? [];
+		if (coordinates.length === 0) {
+			return '—';
+		}
+
+		const center = coordinates.reduce(
+			(total, coordinate) => [total[0] + coordinate[0], total[1] + coordinate[1]],
+			[0, 0],
+		);
+		const lat = center[1] / coordinates.length;
+		const lng = center[0] / coordinates.length;
+		const base = 54 + Math.abs(Math.sin((lat + lng) * 22)) * 24 + Math.min(area / 350000, 16);
+
+		return `${Math.max(52, Math.min(98, Math.round(base)))}%`;
+	}
+
 	function showToast(message) {
 		toast.textContent = message;
 		toast.classList.add('is-visible');
 		window.clearTimeout(toastTimeout);
 		toastTimeout = window.setTimeout(() => toast.classList.remove('is-visible'), 2600);
+	}
+
+	function renderFieldDetails() {
+		const selectedField = getFeatures().find((feature) => feature.id === selectedId && feature.properties.mode === 'field');
+		if (!selectedField) {
+			fieldDetailsPanel.classList.remove('is-visible');
+			fieldDetailsName.textContent = 'Select a field';
+			fieldDetailCrop.textContent = '—';
+			fieldDetailIrrigation.textContent = '—';
+			fieldDetailSoil.textContent = '—';
+			fieldDetailActivity.textContent = '—';
+			fieldDetailManager.textContent = '—';
+			fieldDetailArea.textContent = '—';
+			fieldDetailFertility.textContent = '—';
+			return;
+		}
+
+		const staticProfile = getFieldStaticProfile(selectedField.properties.name);
+		fieldDetailsPanel.classList.add('is-visible');
+		fieldDetailsName.textContent = selectedField.properties.name || 'Field';
+		fieldDetailCrop.textContent = staticProfile.crop;
+		fieldDetailIrrigation.textContent = staticProfile.irrigation;
+		fieldDetailSoil.textContent = staticProfile.soilType;
+		fieldDetailActivity.textContent = staticProfile.activity;
+		fieldDetailManager.textContent = staticProfile.manager;
+		fieldDetailArea.textContent = getFieldAreaDescription(selectedField);
+		fieldDetailFertility.textContent = getFieldFertilityScore(selectedField);
 	}
 
 	function saveWorkspace() {
@@ -392,6 +531,7 @@ if (mapElement) {
 		renderFeatureList(buildings, buildingList, 'No buildings mapped yet.', 'Building');
 		selectionLabel.textContent = selectedId ? '1 selected' : 'Nothing selected';
 		deleteButton.disabled = !selectedId;
+		renderFieldDetails();
 	}
 
 	function persistAndRender() {
@@ -440,6 +580,7 @@ if (mapElement) {
 		draw.setMode('select');
 		renderLists();
 		saveWorkspace();
+		renderFieldDetails();
 
 		const bounds = L.geoJSON({ type: 'FeatureCollection', features: getFeatures() }).getBounds();
 		if (bounds.isValid()) {

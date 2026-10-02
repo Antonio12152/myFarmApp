@@ -93,6 +93,43 @@
                         <div class="field-list" id="field-list" aria-live="polite"></div>
                     </section>
 
+                    <section class="field-details-section" id="field-details-panel" aria-live="polite">
+                        <div class="field-details-header">
+                            <p class="eyebrow">Field details</p>
+                            <h3 id="field-details-name">Select a field</h3>
+                        </div>
+                        <dl class="field-detail-grid">
+                            <div>
+                                <dt>Crop</dt>
+                                <dd id="field-detail-crop">—</dd>
+                            </div>
+                            <div>
+                                <dt>Irrigation</dt>
+                                <dd id="field-detail-irrigation">—</dd>
+                            </div>
+                            <div>
+                                <dt>Soil type</dt>
+                                <dd id="field-detail-soil">—</dd>
+                            </div>
+                            <div>
+                                <dt>Last activity</dt>
+                                <dd id="field-detail-activity">—</dd>
+                            </div>
+                            <div>
+                                <dt>Manager</dt>
+                                <dd id="field-detail-manager">—</dd>
+                            </div>
+                            <div class="field-detail-wide">
+                                <dt>Area</dt>
+                                <dd id="field-detail-area">—</dd>
+                            </div>
+                            <div class="field-detail-wide">
+                                <dt>Soil fertility</dt>
+                                <dd id="field-detail-fertility">—</dd>
+                            </div>
+                        </dl>
+                    </section>
+
                     <section class="field-section building-section" aria-labelledby="buildings-heading">
                         <div class="sidebar-heading">
                             <h2 id="buildings-heading">Buildings</h2>
