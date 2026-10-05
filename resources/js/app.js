@@ -6,6 +6,7 @@ import {
 	TerraDrawSelectMode,
 } from 'terra-draw';
 import { TerraDrawLeafletAdapter } from 'terra-draw-leaflet-adapter';
+import { cropDatabase } from './crops';
 
 const mapElement = document.getElementById('field-map');
 
@@ -132,6 +133,9 @@ if (mapElement) {
 	const fieldDetailActivity = document.getElementById('field-detail-activity');
 	const fieldDetailManager = document.getElementById('field-detail-manager');
 	const fieldDetailArea = document.getElementById('field-detail-area');
+	const fieldDetailNote = document.getElementById('field-detail-note');
+	const fieldDetailProjectedProfit = document.getElementById('field-detail-projected-profit');
+	const fieldDetailCropPlan = document.getElementById('field-detail-crop-plan');
 	const fieldDetailFertility = document.getElementById('field-detail-fertility');
 	const fieldCount = document.getElementById('field-count');
 	const mobileFieldCount = document.getElementById('field-count-mobile');
@@ -325,6 +329,43 @@ if (mapElement) {
 		};
 	}
 
+	function getFieldCropPlan(fieldName, feature) {
+		const soilType = getFieldStaticProfile(fieldName).soilType;
+		const areaHectares = getPolygonAreaSquareMeters(feature) / 10000;
+		const rankedCrops = [...cropDatabase]
+			.map((crop) => {
+				const soilMatch = crop.soilSuitability.includes(soilType) ? 1 : 0.7;
+				const irrigationFit = crop.waterNeed === 'Low' && getFieldStaticProfile(fieldName).irrigation === 'Drip irrigation'
+					? 1.08
+					: crop.waterNeed === 'Medium' ? 1.02 : 0.96;
+				const score = (crop.profitability * soilMatch * irrigationFit) + (crop.marketDemand === 'High' ? 8 : 0);
+				const projectedRevenue = areaHectares * crop.yieldTonnesPerHa * crop.pricePerTonne;
+				const projectedCost = areaHectares * crop.variableCostPerHa;
+				const projectedProfit = projectedRevenue - projectedCost;
+
+				return {
+					...crop,
+					score,
+					projectedRevenue,
+					projectedCost,
+					projectedProfit,
+				};
+			})
+			.sort((a, b) => b.score - a.score)
+			.slice(0, 3);
+
+		const bestCrop = rankedCrops[0] ?? cropDatabase[0];
+		const record = {
+			selectedCrop: bestCrop.name,
+			projectedProfit: bestCrop.projectedProfit,
+			cropSummary: rankedCrops
+				.map((crop) => `${crop.name} (${Math.round(crop.score)}%)`)
+				.join(' • '),
+		};
+
+		return record;
+	}
+
 	function getPolygonAreaSquareMeters(feature) {
 		if (feature.geometry?.type !== 'Polygon') {
 			return 0;
@@ -393,11 +434,15 @@ if (mapElement) {
 			fieldDetailActivity.textContent = '—';
 			fieldDetailManager.textContent = '—';
 			fieldDetailArea.textContent = '—';
+			fieldDetailNote.textContent = '—';
+			fieldDetailProjectedProfit.textContent = '—';
+			fieldDetailCropPlan.textContent = '—';
 			fieldDetailFertility.textContent = '—';
 			return;
 		}
 
 		const staticProfile = getFieldStaticProfile(selectedField.properties.name);
+		const cropPlan = getFieldCropPlan(selectedField.properties.name, selectedField);
 		fieldDetailsPanel.classList.add('is-visible');
 		fieldDetailsName.textContent = selectedField.properties.name || 'Field';
 		fieldDetailCrop.textContent = staticProfile.crop;
@@ -406,6 +451,9 @@ if (mapElement) {
 		fieldDetailActivity.textContent = staticProfile.activity;
 		fieldDetailManager.textContent = staticProfile.manager;
 		fieldDetailArea.textContent = getFieldAreaDescription(selectedField);
+		fieldDetailNote.textContent = staticProfile.note;
+		fieldDetailProjectedProfit.textContent = `€${Math.round(cropPlan.projectedProfit).toLocaleString()} / season`;
+		fieldDetailCropPlan.textContent = `${cropPlan.selectedCrop} · ${cropPlan.cropSummary}`;
 		fieldDetailFertility.textContent = getFieldFertilityScore(selectedField);
 	}
 

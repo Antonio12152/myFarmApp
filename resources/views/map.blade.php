@@ -124,6 +124,18 @@
                                 <dd id="field-detail-area">—</dd>
                             </div>
                             <div class="field-detail-wide">
+                                <dt>Field note</dt>
+                                <dd id="field-detail-note">—</dd>
+                            </div>
+                            <div class="field-detail-wide">
+                                <dt>Projected profit</dt>
+                                <dd id="field-detail-projected-profit">—</dd>
+                            </div>
+                            <div class="field-detail-wide">
+                                <dt>Crop plan</dt>
+                                <dd id="field-detail-crop-plan">—</dd>
+                            </div>
+                            <div class="field-detail-wide">
                                 <dt>Soil fertility</dt>
                                 <dd id="field-detail-fertility">—</dd>
                             </div>
